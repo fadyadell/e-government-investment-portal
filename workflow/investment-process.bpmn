@@ -1,0 +1,47 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<bpmn:definitions xmlns:bpmn="http://www.omg.org/spec/BPMN/20100524/MODEL" xmlns:bpmndi="http://www.omg.org/spec/BPMN/20100524/DI" xmlns:dc="http://www.omg.org/spec/DD/20100524/DC" xmlns:di="http://www.omg.org/spec/DD/20100524/DI" id="Definitions_1" targetNamespace="http://bpmn.io/schema/bpmn">
+  <bpmn:process id="InvestmentProcess" name="Investment Request Process" isExecutable="true">
+    <bpmn:startEvent id="StartEvent_1" name="Receive Request" />
+    
+    <bpmn:parallelGateway id="Gateway_ParallelStart" />
+    
+    <bpmn:serviceTask id="Task_VerifyNationalId" name="Verify National ID (API)" />
+    <bpmn:serviceTask id="Task_VerifyTax" name="Verify Tax Clearance (API)" />
+    
+    <bpmn:parallelGateway id="Gateway_ParallelEnd" />
+    
+    <bpmn:businessRuleTask id="Task_RiskEvaluation" name="Risk Evaluation (jBPM Rules)" />
+    
+    <bpmn:userTask id="Task_OfficialApproval" name="Official Approval Dashboard" />
+    
+    <bpmn:exclusiveGateway id="Gateway_ApprovalDecision" name="Approved?" />
+    
+    <bpmn:serviceTask id="Task_RegisterCompany" name="Register Company (API)" />
+    <bpmn:serviceTask id="Task_NotifyKafka" name="Publish Notification (Kafka)" />
+    
+    <bpmn:endEvent id="EndEvent_Approved" name="Process Completed" />
+    <bpmn:endEvent id="EndEvent_Rejected" name="Process Rejected" />
+    
+    <!-- Sequence Flows mapping the theoretical execution -->
+    <bpmn:sequenceFlow id="Flow_1" sourceRef="StartEvent_1" targetRef="Gateway_ParallelStart" />
+    
+    <bpmn:sequenceFlow id="Flow_2" sourceRef="Gateway_ParallelStart" targetRef="Task_VerifyNationalId" />
+    <bpmn:sequenceFlow id="Flow_3" sourceRef="Gateway_ParallelStart" targetRef="Task_VerifyTax" />
+    
+    <bpmn:sequenceFlow id="Flow_4" sourceRef="Task_VerifyNationalId" targetRef="Gateway_ParallelEnd" />
+    <bpmn:sequenceFlow id="Flow_5" sourceRef="Task_VerifyTax" targetRef="Gateway_ParallelEnd" />
+    
+    <bpmn:sequenceFlow id="Flow_6" sourceRef="Gateway_ParallelEnd" targetRef="Task_RiskEvaluation" />
+    <bpmn:sequenceFlow id="Flow_7" sourceRef="Task_RiskEvaluation" targetRef="Task_OfficialApproval" />
+    
+    <bpmn:sequenceFlow id="Flow_8" sourceRef="Task_OfficialApproval" targetRef="Gateway_ApprovalDecision" />
+    
+    <bpmn:sequenceFlow id="Flow_Approved" sourceRef="Gateway_ApprovalDecision" targetRef="Task_RegisterCompany" name="Yes" />
+    <bpmn:sequenceFlow id="Flow_Rejected" sourceRef="Gateway_ApprovalDecision" targetRef="Task_NotifyKafka" name="No" />
+    
+    <bpmn:sequenceFlow id="Flow_9" sourceRef="Task_RegisterCompany" targetRef="Task_NotifyKafka" />
+    
+    <bpmn:sequenceFlow id="Flow_10" sourceRef="Task_NotifyKafka" targetRef="EndEvent_Approved" />
+    
+  </bpmn:process>
+</bpmn:definitions>
