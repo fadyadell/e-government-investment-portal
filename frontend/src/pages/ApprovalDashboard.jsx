@@ -23,7 +23,7 @@ const ApprovalDashboard = () => {
   }, []);
 
   const handleAction = async (id, action) => {
-    const comments = prompt(\`Enter \${action} comments:\`);
+    const comments = prompt(`Enter ${action} comments:`);
     if (comments === null) return; // User cancelled
 
     try {
@@ -36,7 +36,7 @@ const ApprovalDashboard = () => {
       }
       fetchPending(); // Refresh list
     } catch (error) {
-      console.error(\`Error \${action}ing request:\`, error);
+      console.error(`Error ${action}ing request:`, error);
       alert('Action failed. Check console.');
     }
   };
