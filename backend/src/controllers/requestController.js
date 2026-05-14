@@ -23,16 +23,34 @@ exports.getPendingApprovals = async (req, res) => {
   }
 };
 
+// Helper function with Retry Logic
+const fetchWithRetry = async (url, data, retries = 3) => {
+  for (let i = 0; i < retries; i++) {
+    try {
+      // Mocking actual Axios call to our internal mock APIs
+      const response = await axios.post(`http://localhost:5000/api/mock-external${url}`, data);
+      return response;
+    } catch (error) {
+      console.warn(`Attempt ${i + 1} failed for ${url}. Retrying...`);
+      if (i === retries - 1) throw new Error(`Service unavailable: ${url}`);
+      // Wait before retrying (exponential backoff mock)
+      await new Promise(resolve => setTimeout(resolve, 1000 * (i + 1)));
+    }
+  }
+};
+
 // Create new investment request
 exports.createRequest = async (req, res) => {
   const { investorId, companyName, investmentAmount, description, nationalId, taxId } = req.body;
 
   try {
-    // 1. Parallel Verification (Mock)
-    console.log('Starting parallel verification...');
-    // In a real scenario, these would be async calls to external services
-    const idVerification = { data: { valid: true } }; // Mocked
-    const taxVerification = { data: { cleared: true } }; // Mocked
+    console.log('Starting parallel verification with retry logic...');
+    
+    // 1. Parallel Verification with Retry
+    const [idResponse, taxResponse] = await Promise.all([
+      fetchWithRetry('/verify-id', { nationalId }).catch(e => ({ data: { valid: false, error: e.message } })),
+      fetchWithRetry('/verify-tax', { taxId }).catch(e => ({ data: { cleared: false, error: e.message } }))
+    ]);
 
     const newRequest = new InvestmentRequest({
       investorId,
@@ -41,15 +59,16 @@ exports.createRequest = async (req, res) => {
       description,
       status: 'pending',
       verifications: {
-        nationalId: idVerification.data.valid,
-        taxClearance: taxVerification.data.cleared
+        nationalId: idResponse.data.valid || false,
+        taxClearance: taxResponse.data.cleared || false
       }
     });
 
     const savedRequest = await newRequest.save();
     res.status(201).json(savedRequest);
   } catch (error) {
-    res.status(400).json({ message: error.message });
+    console.error('Critical workflow failure:', error);
+    res.status(500).json({ message: 'Workflow initialization failed. Please try again later.' });
   }
 };
 
